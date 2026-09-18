@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TV Stream Player</title>
+<style>
+html,body{margin:0;background:#050505;color:#fff;font-family:Arial,sans-serif}
+body{padding:14px}
+h1{font-size:22px;margin:0 0 12px}
+input{box-sizing:border-box;width:100%;height:46px;background:#151515;color:#fff;border:2px solid #555;padding:8px;font-size:17px}
+button{height:44px;background:#292929;color:#fff;border:2px solid #666;padding:0 14px;font-size:17px;margin:7px 5px 7px 0}
+button:focus,input:focus{outline:3px solid #fff}
+video{display:block;width:100%;height:auto;background:#000;margin-top:8px}
+#status{min-height:22px;margin:6px 0;color:#ccc}
+#history{border-top:1px solid #444;margin-top:12px;padding-top:8px}
+.hist{display:block;width:100%;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:5px 0}
+</style>
+</head>
+<body>
+<h1>TV Stream Player</h1>
+<input id="url" type="text" placeholder="Direct MP4 / MKV / 3GP URL">
+<div>
+<button id="play">PLAY</button>
+<button id="clear">CLEAR</button>
+<button id="back">-10s</button>
+<button id="next">+10s</button>
+<button id="speed">Speed 1x</button>
+<button id="fs">FULLSCREEN</button>
+</div>
+<div id="status">Enter a direct video URL.</div>
+<video id="v" controls preload="metadata"></video>
+
+<div id="history">
+<strong>Saved links</strong>
+<div id="items"></div>
+</div>
+
+<script>
+(function(){
+var v=document.getElementById('v');
+var u=document.getElementById('url');
+var s=document.getElementById('status');
+var items=document.getElementById('items');
+var speeds=[0.5,1,1.25,1.5,2], si=1;
+
+function hist(){
+ try{return JSON.parse(localStorage.getItem('tv_links')||'[]');}
+ catch(e){return [];}
+}
+function draw(){
+ var a=hist(),i,b;
+ items.innerHTML='';
+ for(i=0;i<a.length;i++){
+  b=document.createElement('button');
+  b.className='hist';
+  b.innerHTML=a[i];
+  b.setAttribute('data-url',a[i]);
+  b.onclick=function(){u.value=this.getAttribute('data-url');play();};
+  items.appendChild(b);
+ }
+}
+function save(x){
+ var a=hist(),i;
+ if(!x)return;
+ for(i=a.length-1;i>=0;i--)if(a[i]===x)a.splice(i,1);
+ a.unshift(x);
+ if(a.length>15)a.length=15;
+ try{localStorage.setItem('tv_links',JSON.stringify(a));}catch(e){}
+ draw();
+}
+function play(){
+ var x=u.value.replace(/^\s+|\s+$/g,'');
+ if(!x){s.innerHTML='Please enter a direct video URL.';return;}
+ v.pause();
+ v.src=x;
+ v.load();
+ save(x);
+ s.innerHTML='Loading...';
+ try{v.play();}catch(e){}
+}
+document.getElementById('play').onclick=play;
+u.onkeydown=function(e){e=e||window.event;if(e.keyCode===13)play();};
+document.getElementById('clear').onclick=function(){
+ u.value='';v.removeAttribute('src');v.load();s.innerHTML='Cleared.';
+};
+document.getElementById('back').onclick=function(){
+ try{v.currentTime=Math.max(0,v.currentTime-10);}catch(e){}
+};
+document.getElementById('next').onclick=function(){
+ try{v.currentTime=Math.min(v.duration,v.currentTime+10);}catch(e){}
+};
+document.getElementById('speed').onclick=function(){
+ si++;if(si>=speeds.length)si=0;
+ v.playbackRate=speeds[si];
+ this.innerHTML='Speed '+speeds[si]+'x';
+};
+document.getElementById('fs').onclick=function(){
+ try{
+  if(v.requestFullscreen)v.requestFullscreen();
+  else if(v.webkitRequestFullscreen)v.webkitRequestFullscreen();
+  else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();
+ }catch(e){}
+};
+v.onloadedmetadata=function(){s.innerHTML='Ready.';};
+v.onplaying=function(){s.innerHTML='Playing';};
+v.onerror=function(){s.innerHTML='Cannot play this URL/codec in this browser.';};
+draw();
+})();
+</script>
+</body>
+</html>
